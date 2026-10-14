@@ -58,6 +58,9 @@ R_PROFILE = {
 
     # 3. Knowledge for the converter ----------------------------------------
     "conversion_notes": [
+        "read.csv(..., stringsAsFactors = FALSE) only keeps text columns as plain "
+        "strings instead of factors; numeric columns stay numeric. It translates "
+        "to a plain pd.read_csv(path): never use dtype=str.",
         "R vectors and data frames are 1-based and R slices include both ends "
         "(df[2:4, ] = rows 2, 3 and 4); pandas iloc is 0-based and end-exclusive.",
         "R sd() and var() use the sample formula (n-1). numpy std()/var() default "

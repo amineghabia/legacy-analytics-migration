@@ -28,7 +28,7 @@ NUM_CTX = 4096           # context window (tokens); larger = more VRAM, slower o
 LLM_TIMEOUT_S = 300
 MAX_JSON_ATTEMPTS = 2    # extraction: retry once if the answer fails validation
 
-MAX_REPAIR_ATTEMPTS = 3  # conversion: generate, run, re-prompt with the error
+MAX_REPAIR_ATTEMPTS = 5  # conversion: generate, run, re-prompt with the error (early stop if stuck)
 USE_CONVERSION_NOTES = True  # inject known A->B pitfalls into the conversion prompt
 SCRIPT_TIMEOUT_S = 120
 
