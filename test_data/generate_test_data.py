@@ -64,6 +64,33 @@ def hr_salary_stats() -> None:
     save(df, "02_hr_salary_stats", "employees.csv")
 
 
+def ops_inventory_cleaning() -> None:
+    """Messy warehouse extract: inconsistent text, duplicates, non-numeric
+    quantities ("N/A", "unknown"), negative counts and missing costs.
+
+    No silent trap here, but a naive astype(float) on quantity crashes:
+    this script is expected to exercise the repair loop.
+    """
+    rng = np.random.default_rng(3)
+    n = 40
+    warehouses = ["Montreal", " montreal", "MONTREAL ", "Toronto", "toronto ", "Vancouver"]
+    df = pd.DataFrame({
+        "sku": [f"SKU-{i:03d}" for i in rng.integers(1, 30, n)],
+        "warehouse": rng.choice(warehouses, n),
+        "item_name": rng.choice(["Pallet jack", " Shelf unit", "Forklift battery ", "Bin"], n),
+        "quantity": rng.integers(-5, 200, n).astype(str),
+        "unit_cost": rng.choice([12.5, 48.0, 310.0, 7.25], n),
+        "last_count_date": (pd.to_datetime("2024-03-01")
+                            + pd.to_timedelta(rng.integers(0, 120, n), unit="D")).strftime("%Y-%m-%d"),
+    })
+    df.loc[[4, 17], "quantity"] = "N/A"
+    df.loc[29, "quantity"] = "unknown"
+    df.loc[[8, 22], "unit_cost"] = np.nan
+    df = pd.concat([df, df.iloc[[2, 11, 30]]], ignore_index=True)  # exact duplicates
+    save(df, "03_ops_inventory_cleaning", "inventory.csv")
+
+
 if __name__ == "__main__":
     sales_monthly_summary()
     hr_salary_stats()
+    ops_inventory_cleaning()
