@@ -118,8 +118,29 @@ def sales_commission_payout() -> None:
     save(txns, "04_sales_commission_payout", "transactions.csv")
 
 
+def risk_segmentation() -> None:
+    """Customer risk scores, including values exactly on the band limits.
+
+    Traps: cut() intervals are right-closed, so a score of exactly 30 is
+    'low', not 'medium'; and the bands follow the business order
+    (low < medium < high < critical), not the alphabetical one.
+    """
+    rng = np.random.default_rng(5)
+    n = 50
+    scores = rng.integers(1, 100, n)
+    scores[[3, 11, 19, 27, 35, 42]] = [30, 30, 60, 60, 80, 80]  # boundary cases
+    df = pd.DataFrame({
+        "customer_id": [f"C{2000 + i}" for i in range(n)],
+        "risk_score": scores,
+        "balance": rng.uniform(1000, 50000, n).round(2),
+        "account_status": rng.choice(["active"] * 9 + ["closed"], n),
+    })
+    save(df, "05_risk_segmentation", "customers.csv")
+
+
 if __name__ == "__main__":
     sales_monthly_summary()
     hr_salary_stats()
     ops_inventory_cleaning()
     sales_commission_payout()
+    risk_segmentation()
