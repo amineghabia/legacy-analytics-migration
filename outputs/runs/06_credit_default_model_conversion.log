@@ -1,0 +1,138 @@
+=== attempt 1: CRASH ===
+import pandas as pd
+import statsmodels.api as sm
+
+args = sys.argv[1:-1]
+loans = pd.read_csv(args[0], dtype=str)
+
+model_vars = ["defaulted", "income", "loan_amount", "credit_score",
+              "employment_years", "prior_default"]
+loans = loans[model_vars].dropna()
+if len(loans) < 50:
+    raise ValueError("Not enough complete observations to fit the model")
+
+loans["debt_to_income"] = loans["loan_amount"].astype(float) / loans["income"].astype(float)
+
+# Standardise continuous predictors so coefficients are comparable
+predictors = ["debt_to_income", "credit_score", "employment_years"]
+for v in predictors:
+    loans[v] = (loans[v].astype(float) - loans[v].astype(float).mean()) / loans[v].astype(float).std()
+
+X = loans[predictors]
+y = loans["defaulted"].astype(int)
+X = sm.add_constant(X)
+
+model = sm.GLM(y, X, family=sm.families.Binomial()).fit()
+
+# Coefficient table for model governance review
+coefs = model.summary2().tables[1]
+coefs.columns = ["estimate", "std_error", "z_value", "p_value"]
+coefs["term"] = coefs.index
+coefs["term"][coefs["term"] == "const"] = "intercept"
+coefs["odds_ratio"] = np.exp(coefs["estimate"])
+coefs = coefs[["term", "estimate", "std_error", "z_value", "p_value", "odds_ratio"]]
+coefs[["estimate", "std_error", "z_value", "p_value"]] = coefs[["estimate", "std_error", "z_value", "p_value"]].round(4)
+
+coefs.to_csv(sys.argv[-1], index=False, na_rep="NA")
+
+--- error ---
+Traceback (most recent call last):
+  File "C:\Etudes\Deloitte\converted\06_credit_default_model.py", line 4, in <module>
+    args = sys.argv[1:-1]
+           ^^^
+NameError: name 'sys' is not defined
+
+=== attempt 2: CRASH ===
+import pandas as pd
+import statsmodels.api as sm
+import sys
+
+args = sys.argv[1:-1]
+loans = pd.read_csv(args[0], dtype=str)
+
+model_vars = ["defaulted", "income", "loan_amount", "credit_score",
+              "employment_years", "prior_default"]
+loans = loans[model_vars].dropna()
+if len(loans) < 50:
+    raise ValueError("Not enough complete observations to fit the model")
+
+loans["debt_to_income"] = loans["loan_amount"].astype(float) / loans["income"].astype(float)
+
+# Standardise continuous predictors so coefficients are comparable
+predictors = ["debt_to_income", "credit_score", "employment_years"]
+for v in predictors:
+    loans[v] = (loans[v].astype(float) - loans[v].astype(float).mean()) / loans[v].astype(float).std()
+
+X = loans[predictors]
+y = loans["defaulted"].astype(int)
+X = sm.add_constant(X)
+
+model = sm.GLM(y, X, family=sm.families.Binomial()).fit()
+
+# Coefficient table for model governance review
+coefs = model.summary2().tables[1]
+coefs.columns = ["estimate", "std_error", "z_value", "p_value"]
+coefs["term"] = coefs.index
+coefs["term"][coefs["term"] == "const"] = "intercept"
+coefs["odds_ratio"] = np.exp(coefs["estimate"])
+coefs = coefs[["term", "estimate", "std_error", "z_value", "p_value", "odds_ratio"]]
+coefs[["estimate", "std_error", "z_value", "p_value"]] = coefs[["estimate", "std_error", "z_value", "p_value"]].round(4)
+
+coefs.to_csv(sys.argv[-1], index=False, na_rep="NA")
+
+--- error ---
+Traceback (most recent call last):
+  File "C:\Etudes\Deloitte\converted\06_credit_default_model.py", line 29, in <module>
+    coefs.columns = ["estimate", "std_error", "z_value", "p_value"]
+    ^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\generic.py", line 6208, in __setattr__
+    return object.__setattr__(self, name, value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "pandas/_libs/properties.pyx", line 69, in pandas._libs.properties.AxisProperty.__set__
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\generic.py", line 754, in _set_axis
+    self._mgr.set_axis(axis, labels)
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\internals\managers.py", line 273, in set_axis
+    self._validate_set_axis(axis, new_labels)
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\internals\managers.py", line 288, in _validate_set_axis
+    raise ValueError(
+ValueError: Length mismatch: Expected axis has 6 elements, new values have 4 elements
+
+=== attempt 3: OK ===
+import pandas as pd
+import statsmodels.api as sm
+import numpy as np
+import sys
+
+args = sys.argv[1:-1]
+loans = pd.read_csv(args[0], dtype=str)
+
+model_vars = ["defaulted", "income", "loan_amount", "credit_score",
+              "employment_years", "prior_default"]
+loans = loans[model_vars].dropna()
+if len(loans) < 50:
+    raise ValueError("Not enough complete observations to fit the model")
+
+loans["debt_to_income"] = loans["loan_amount"].astype(float) / loans["income"].astype(float)
+
+# Standardise continuous predictors so coefficients are comparable
+predictors = ["debt_to_income", "credit_score", "employment_years"]
+for v in predictors:
+    loans[v] = (loans[v].astype(float) - loans[v].astype(float).mean()) / loans[v].astype(float).std()
+
+X = loans[predictors]
+y = loans["defaulted"].astype(int)
+X = sm.add_constant(X)
+
+model = sm.GLM(y, X, family=sm.families.Binomial()).fit()
+
+# Coefficient table for model governance review
+coefs = model.summary2().tables[1]
+coefs.columns = ["estimate", "std_error", "z_value", "p_value", "conf_lower", "conf_upper"]
+coefs["term"] = coefs.index
+coefs["term"][coefs["term"] == "const"] = "intercept"
+coefs["odds_ratio"] = np.exp(coefs["estimate"])
+coefs = coefs[["term", "estimate", "std_error", "z_value", "p_value", "odds_ratio"]]
+coefs[["estimate", "std_error", "z_value", "p_value"]] = coefs[["estimate", "std_error", "z_value", "p_value"]].round(4)
+
+coefs.to_csv(sys.argv[-1], index=False, na_rep="NA")
+

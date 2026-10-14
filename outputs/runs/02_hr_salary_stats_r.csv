@@ -1,0 +1,6 @@
+"department","headcount","avg_salary","sd_salary","avg_bonus"
+"Engineering",7,83923.86,6634.53,6491.86
+"Finance",5,72329,7131.82,6523.4
+"Marketing",6,60796.83,9210.38,NA
+"Operations",5,52536.6,4807.28,4408.6
+"Sales",7,59878.14,6281.41,NA

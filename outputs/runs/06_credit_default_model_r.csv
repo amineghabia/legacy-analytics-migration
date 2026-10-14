@@ -1,0 +1,6 @@
+"term","estimate","std_error","z_value","p_value","odds_ratio"
+"intercept",-2.3569,0.2144,-10.991,0,0.0947
+"debt_to_income",0.5159,0.1667,3.0942,0.002,1.6751
+"credit_score",-0.8759,0.1813,-4.8328,0,0.4165
+"employment_years",-0.1877,0.1653,-1.1353,0.2563,0.8289
+"prior_default",0.3535,0.4711,0.7504,0.453,1.4241

@@ -1,0 +1,31 @@
+script,field,rule_value,llm_value,overlap,verdict,review_priority
+01_sales_monthly_summary,business_category,sales,sales,,agree,none
+01_sales_monthly_summary,business_domains,sales,"finance, sales",0.5,partial,low
+01_sales_monthly_summary,technical_category,transformation,transformation,,agree,none
+01_sales_monthly_summary,technical_operations,"ingestion, cleaning, transformation","cleaning, transformation, reporting",0.5,partial,low
+01_sales_monthly_summary,complexity,simple,simple,,agree,none
+02_hr_salary_stats,business_category,HR,HR,,agree,none
+02_hr_salary_stats,business_domains,HR,"finance, HR",0.5,partial,low
+02_hr_salary_stats,technical_category,transformation,transformation,,agree,none
+02_hr_salary_stats,technical_operations,"ingestion, transformation","ingestion, cleaning, transformation",0.67,partial,low
+02_hr_salary_stats,complexity,simple,simple,,agree,none
+03_ops_inventory_cleaning,business_category,operations,operations,,agree,none
+03_ops_inventory_cleaning,business_domains,operations,operations,1.0,agree,none
+03_ops_inventory_cleaning,technical_category,cleaning,cleaning,,agree,none
+03_ops_inventory_cleaning,technical_operations,"ingestion, cleaning, transformation","cleaning, transformation",0.67,partial,low
+03_ops_inventory_cleaning,complexity,simple,moderate,,partial,low
+04_sales_commission_payout,business_category,sales,sales,,agree,none
+04_sales_commission_payout,business_domains,"finance, sales","finance, sales, HR",0.67,partial,low
+04_sales_commission_payout,technical_category,transformation,transformation,,agree,none
+04_sales_commission_payout,technical_operations,"ingestion, transformation","ingestion, cleaning, transformation",0.67,partial,low
+04_sales_commission_payout,complexity,simple,moderate,,partial,low
+05_risk_segmentation,business_category,risk,risk,,agree,none
+05_risk_segmentation,business_domains,risk,risk,1.0,agree,none
+05_risk_segmentation,technical_category,transformation,reporting,,disagree,high
+05_risk_segmentation,technical_operations,"ingestion, transformation","cleaning, transformation, reporting",0.25,disagree,high
+05_risk_segmentation,complexity,moderate,moderate,,agree,none
+06_credit_default_model,business_category,finance,risk,,disagree,high
+06_credit_default_model,business_domains,"finance, risk",risk,0.5,partial,low
+06_credit_default_model,technical_category,modeling,modeling,,agree,none
+06_credit_default_model,technical_operations,"ingestion, cleaning, modeling","cleaning, modeling",0.67,partial,low
+06_credit_default_model,complexity,complex,moderate,,partial,low

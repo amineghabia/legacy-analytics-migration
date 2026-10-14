@@ -1,0 +1,149 @@
+=== attempt 1: CRASH ===
+import pandas as pd
+
+# Read input files
+reps = pd.read_csv(sys.argv[1], dtype=str)
+transactions = pd.read_csv(sys.argv[2], dtype=str)
+
+# Only closed deals are commissionable
+closed = transactions[transactions['status'] == 'closed']
+sales_by_rep = closed.groupby('rep_id')['amount'].sum().reset_index()
+sales_by_rep.rename(columns={'amount': 'closed_sales'}, inplace=True)
+
+# Merge with reps data and calculate commission
+payout = pd.merge(reps, sales_by_rep, on='rep_id')
+payout['commission'] = round(payout['closed_sales'].astype(float) * payout['commission_rate'].astype(float), 2)
+
+# Rank reps by closed sales; the top 3 earn a 2% accelerator
+payout = payout.sort_values(by='closed_sales', ascending=False).reset_index(drop=True)
+payout['rank'] = range(1, len(payout) + 1)
+top_n = 3
+payout['accelerator'] = 0
+payout.loc[:top_n-1, 'accelerator'] = round(payout.loc[:top_n-1, 'closed_sales'].astype(float) * 0.02, 2)
+
+payout['total_payout'] = payout['commission'] + payout['accelerator']
+payout['closed_sales'] = round(payout['closed_sales'].astype(float), 2)
+
+# Write output file
+payout.to_csv(sys.argv[3], index=False, na_rep="NA")
+
+--- error ---
+Traceback (most recent call last):
+  File "C:\Etudes\Deloitte\converted\04_sales_commission_payout.py", line 4, in <module>
+    reps = pd.read_csv(sys.argv[1], dtype=str)
+                       ^^^
+NameError: name 'sys' is not defined
+
+=== attempt 2: CRASH ===
+import pandas as pd
+import sys
+
+# Read input files
+reps = pd.read_csv(sys.argv[1], dtype=str)
+transactions = pd.read_csv(sys.argv[2], dtype=str)
+
+# Only closed deals are commissionable
+closed = transactions[transactions['status'] == 'closed']
+sales_by_rep = closed.groupby('rep_id')['amount'].sum().reset_index()
+sales_by_rep.rename(columns={'amount': 'closed_sales'}, inplace=True)
+
+# Merge with reps data and calculate commission
+payout = pd.merge(reps, sales_by_rep, on='rep_id')
+payout['commission'] = round(payout['closed_sales'].astype(float) * payout['commission_rate'].astype(float), 2)
+
+# Rank reps by closed sales; the top 3 earn a 2% accelerator
+payout = payout.sort_values(by='closed_sales', ascending=False).reset_index(drop=True)
+payout['rank'] = range(1, len(payout) + 1)
+top_n = 3
+payout['accelerator'] = 0
+payout.loc[:top_n-1, 'accelerator'] = round(payout.loc[:top_n-1, 'closed_sales'].astype(float) * 0.02, 2)
+
+payout['total_payout'] = payout['commission'] + payout['accelerator']
+payout['closed_sales'] = round(payout['closed_sales'].astype(float), 2)
+
+# Write output file
+payout.to_csv(sys.argv[3], index=False, na_rep="NA")
+
+--- error ---
+\04_sales_commission_payout.py", line 15, in <module>
+    payout['commission'] = round(payout['closed_sales'].astype(float) * payout['commission_rate'].astype(float), 2)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\generic.py", line 6529, in astype
+    new_data = self._mgr.astype(dtype=dtype, errors=errors)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\internals\managers.py", line 627, in astype
+    return self.apply("astype", dtype=dtype, errors=errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\internals\managers.py", line 445, in apply
+    applied = getattr(b, f)(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\internals\blocks.py", line 607, in astype
+    new_values = astype_array_safe(values, dtype, errors=errors)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\dtypes\astype.py", line 240, in astype_array_safe
+    new_values = astype_array(values, dtype, copy=copy)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\dtypes\astype.py", line 182, in astype_array
+    values = values.astype(dtype, copy=copy)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\arrays\string_.py", line 941, in astype
+    values = arr.astype(dtype)
+             ^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: '9448.1610561.456005.488117.319631.9711715.7913913.61'
+
+=== attempt 3: CRASH ===
+import pandas as pd
+import sys
+
+# Read input files
+reps = pd.read_csv(sys.argv[1], dtype=str)
+transactions = pd.read_csv(sys.argv[2], dtype=str)
+
+# Only closed deals are commissionable
+closed = transactions[transactions['status'] == 'closed']
+sales_by_rep = closed.groupby('rep_id')['amount'].sum().reset_index()
+sales_by_rep.rename(columns={'amount': 'closed_sales'}, inplace=True)
+
+# Merge with reps data and calculate commission
+payout = pd.merge(reps, sales_by_rep, on='rep_id')
+payout['commission'] = round(payout['closed_sales'].astype(float) * payout['commission_rate'].astype(float), 2)
+
+# Rank reps by closed sales; the top 3 earn a 2% accelerator
+payout = payout.sort_values(by='closed_sales', ascending=False).reset_index(drop=True)
+payout['rank'] = range(1, len(payout) + 1)
+top_n = 3
+payout['accelerator'] = 0
+payout.loc[:top_n-1, 'accelerator'] = round(payout.loc[:top_n-1, 'closed_sales'].astype(float) * 0.02, 2)
+
+payout['total_payout'] = payout['commission'] + payout['accelerator']
+payout['closed_sales'] = round(payout['closed_sales'].astype(float), 2)
+
+# Write output file
+payout.to_csv(sys.argv[3], index=False, na_rep="NA")
+
+--- error ---
+\04_sales_commission_payout.py", line 15, in <module>
+    payout['commission'] = round(payout['closed_sales'].astype(float) * payout['commission_rate'].astype(float), 2)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\generic.py", line 6529, in astype
+    new_data = self._mgr.astype(dtype=dtype, errors=errors)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\internals\managers.py", line 627, in astype
+    return self.apply("astype", dtype=dtype, errors=errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\internals\managers.py", line 445, in apply
+    applied = getattr(b, f)(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\internals\blocks.py", line 607, in astype
+    new_values = astype_array_safe(values, dtype, errors=errors)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\dtypes\astype.py", line 240, in astype_array_safe
+    new_values = astype_array(values, dtype, copy=copy)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\dtypes\astype.py", line 182, in astype_array
+    values = values.astype(dtype, copy=copy)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\arrays\string_.py", line 941, in astype
+    values = arr.astype(dtype)
+             ^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: '9448.1610561.456005.488117.319631.9711715.7913913.61'

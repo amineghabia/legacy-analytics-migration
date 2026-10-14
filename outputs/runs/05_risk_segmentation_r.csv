@@ -1,0 +1,5 @@
+"risk_band","n_customers","total_exposure","avg_risk_score","exposure_share"
+"low",18,508188.83,16.83,0.4635
+"medium",10,205400.22,49.1,0.1873
+"high",10,256665.87,69.4,0.2341
+"critical",5,126271.74,90.6,0.1152

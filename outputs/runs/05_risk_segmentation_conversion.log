@@ -1,0 +1,60 @@
+=== attempt 1: CRASH ===
+import pandas as pd
+
+args = sys.argv[1:]
+customers = pd.read_csv(args[0])
+
+active = customers[customers['account_status'] == 'active']
+
+active['risk_band'] = pd.cut(active['risk_score'],
+                             bins=[-float('inf'), 30, 60, 80, float('inf')],
+                             labels=['low', 'medium', 'high', 'critical'])
+
+n_customers = active['risk_band'].value_counts()
+total_exposure = active.groupby('risk_band')['balance'].sum()
+avg_score = active.groupby('risk_band')['risk_score'].mean()
+
+segments = pd.DataFrame({
+    'risk_band': n_customers.index,
+    'n_customers': n_customers.values.astype(int),
+    'total_exposure': round(total_exposure, 2),
+    'avg_risk_score': round(avg_score, 2)
+})
+segments['exposure_share'] = round(segments['total_exposure'] / segments['total_exposure'].sum(), 4)
+
+segments.to_csv(args[1], index=False, na_rep='NA')
+
+--- error ---
+Traceback (most recent call last):
+  File "C:\Etudes\Deloitte\converted\05_risk_segmentation.py", line 3, in <module>
+    args = sys.argv[1:]
+           ^^^
+NameError: name 'sys' is not defined
+
+=== attempt 2: OK ===
+import pandas as pd
+import sys
+
+args = sys.argv[1:]
+customers = pd.read_csv(args[0])
+
+active = customers[customers['account_status'] == 'active']
+
+active['risk_band'] = pd.cut(active['risk_score'],
+                             bins=[-float('inf'), 30, 60, 80, float('inf')],
+                             labels=['low', 'medium', 'high', 'critical'])
+
+n_customers = active['risk_band'].value_counts()
+total_exposure = active.groupby('risk_band')['balance'].sum()
+avg_score = active.groupby('risk_band')['risk_score'].mean()
+
+segments = pd.DataFrame({
+    'risk_band': n_customers.index,
+    'n_customers': n_customers.values.astype(int),
+    'total_exposure': round(total_exposure, 2),
+    'avg_risk_score': round(avg_score, 2)
+})
+segments['exposure_share'] = round(segments['total_exposure'] / segments['total_exposure'].sum(), 4)
+
+segments.to_csv(args[1], index=False, na_rep='NA')
+

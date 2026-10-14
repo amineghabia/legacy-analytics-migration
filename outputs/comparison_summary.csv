@@ -1,0 +1,6 @@
+field,n_scripts,agree,partial,disagree,strict_agreement,lenient_agreement
+business_category,6,5,0,1,0.83,0.83
+business_domains,6,2,4,0,0.33,1.0
+technical_category,6,5,0,1,0.83,0.83
+technical_operations,6,0,5,1,0.0,0.83
+complexity,6,3,3,0,0.5,1.0
