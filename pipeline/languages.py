@@ -36,7 +36,9 @@ R_PROFILE = {
         "cleaning": [
             "na.omit", "is.na", "complete.cases", "drop_na", "replace_na",
             "trimws", "tolower", "toupper", "gsub", "sub", "duplicated",
-            "unique", "distinct", "as.numeric", "as.integer", "as.Date",
+            "unique", "distinct", "as.Date",
+            # as.numeric / as.integer are left out on purpose: they are mostly
+            # used as plumbing to build output tables, not to clean data.
         ],
         "transformation": [
             "aggregate", "tapply", "sapply", "lapply", "apply", "merge",
