@@ -24,7 +24,9 @@ OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "qwen2.5-coder:7b"
 TEMPERATURE = 0          # deterministic decoding: reproducible, auditable results
 SEED = 42                # removes remaining sampling randomness
+NUM_CTX = 4096           # context window (tokens); larger = more VRAM, slower on a 6 GB GPU
 LLM_TIMEOUT_S = 300
+MAX_JSON_ATTEMPTS = 2    # extraction: retry once if the answer fails validation
 
 MAX_REPAIR_ATTEMPTS = 3  # conversion: generate, run, re-prompt with the error
 USE_CONVERSION_NOTES = True  # inject known A->B pitfalls into the conversion prompt
