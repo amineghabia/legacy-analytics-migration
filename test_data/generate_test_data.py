@@ -138,9 +138,44 @@ def risk_segmentation() -> None:
     save(df, "05_risk_segmentation", "customers.csv")
 
 
+def credit_default_model() -> None:
+    """Loan book with a known logistic relationship and a few missing values.
+
+    Traps: glm() is an unpenalised logistic regression (sklearn's default is
+    L2-penalised), and the script standardises with sd() (n-1) while
+    sklearn's StandardScaler divides by n.
+    """
+    rng = np.random.default_rng(6)
+    n = 400
+    income = rng.normal(65000, 18000, n).clip(20000).round(0)
+    loan_amount = (income * rng.uniform(0.1, 0.9, n)).round(0)
+    credit_score = rng.normal(680, 60, n).clip(450, 850).round(0)
+    employment_years = rng.integers(0, 30, n).astype(float)
+    prior_default = rng.binomial(1, 0.12, n)
+
+    # True model used to simulate defaults (unknown to the analytics script)
+    logit = (-2.0 + 2.5 * (loan_amount / income - 0.5) - 0.012 * (credit_score - 680)
+             - 0.03 * employment_years + 1.1 * prior_default)
+    defaulted = rng.binomial(1, 1 / (1 + np.exp(-logit)))
+
+    df = pd.DataFrame({
+        "loan_id": [f"L{10000 + i}" for i in range(n)],
+        "income": income,
+        "loan_amount": loan_amount,
+        "credit_score": credit_score,
+        "employment_years": employment_years,
+        "prior_default": prior_default,
+        "purpose": rng.choice(["car", "home", "personal", "business"], n),
+        "defaulted": defaulted,
+    })
+    df.loc[rng.choice(n, 12, replace=False), "employment_years"] = np.nan
+    save(df, "06_credit_default_model", "loans.csv")
+
+
 if __name__ == "__main__":
     sales_monthly_summary()
     hr_salary_stats()
     ops_inventory_cleaning()
     sales_commission_payout()
     risk_segmentation()
+    credit_default_model()
