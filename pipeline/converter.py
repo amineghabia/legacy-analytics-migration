@@ -9,19 +9,28 @@ Early stop: if two consecutive attempts end with the same error, the model
 is stuck (at temperature 0 it would repeat itself), so we stop and flag the
 script instead of spending the remaining attempts.
 
-The loop only repairs crashes. A script that runs but gives a different
-result is NOT sent back with the expected output: the model could otherwise
-fit the numbers instead of fixing the logic. Those differences are reported
-by the validator for human review.
+What counts as a failure to repair:
+  - a crash (and, if WARNINGS_AS_ERRORS, a runtime warning such as pandas
+    Copy-on-Write, which otherwise silently does nothing);
+  - if STRUCTURAL_FEEDBACK, an output whose structure differs from the
+    original output (row count, column names, missing values per column).
+The expected VALUES are never sent back: the model could otherwise fit the
+numbers instead of fixing the logic. Value differences are reported by the
+validator for human review. If the budget runs out, the last version that
+runs is kept (status 'runnable') so the validator can still report on it.
 """
 import re
 import sys
 import time
 
-from config import CONVERTED_DIR, MAX_REPAIR_ATTEMPTS, RUNS_DIR, USE_CONVERSION_NOTES
+import pandas as pd
+
+from config import (CONVERTED_DIR, MAX_REPAIR_ATTEMPTS, RSCRIPT_PATH, RUNS_DIR,
+                    STRUCTURAL_FEEDBACK, USE_CONVERSION_NOTES, WARNINGS_AS_ERRORS)
 from pipeline.llm_client import LLMError, chat
 from pipeline.parser import ParsedScript
 from pipeline.runner import run_script, test_inputs
+from pipeline.validator import structure_differences
 
 SYSTEM_PROMPT = """You are an expert data engineer migrating legacy {source} scripts to {target}.
 Rewrite the script so that it produces EXACTLY the same output file as the original:
@@ -59,6 +68,30 @@ line that is wrong. Check in particular how the data is read and typed
 Fix the error while keeping exactly the behaviour of the original script.
 Return only the complete corrected Python code in a single ```python block."""
 
+STRUCTURE_PROMPT = """The Python conversion of this {source} script runs, but its output
+does not have the same structure as the output of the original script.
+
+Original {source} script:
+```
+{source_code}
+```
+
+Your previous Python code:
+```python
+{python_code}
+```
+
+Differences found (structure only):
+{error}
+
+Find which step of your code diverges from the original logic and fix it.
+Do not hard-code values. Keep exactly the behaviour of the original script.
+Return only the complete corrected Python code in a single ```python block."""
+
+# Runtime warnings become errors, except library deprecation notices.
+PYTHON_FLAGS = ["-W", "error", "-W", "ignore::DeprecationWarning"]
+EXCEPTION_LINE = re.compile(r"^[\w.]*(Error|Exception|Warning)\b")
+
 CODE_BLOCK = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
 
 
@@ -69,8 +102,26 @@ def extract_code(answer: str) -> str:
 
 
 def last_line(error: str) -> str:
-    """The exception message, i.e. the last line of a traceback."""
-    return error.strip().splitlines()[-1] if error.strip() else ""
+    """The exception message of a traceback, e.g. 'ValueError: ...'.
+    pandas warnings end with a documentation link, so the last line that
+    looks like an exception is taken, not simply the last line."""
+    lines = error.strip().splitlines()
+    exceptions = [line for line in lines if EXCEPTION_LINE.match(line)]
+    return exceptions[-1] if exceptions else (lines[-1] if lines else "")
+
+
+def reference_output(script: ParsedScript, inputs: list) -> pd.DataFrame | None:
+    """Run the original script once to know the expected output structure."""
+    reference = RUNS_DIR / f"{script.name}_r.csv"
+    ok, _ = run_script([RSCRIPT_PATH], script.path, inputs, reference)
+    return pd.read_csv(reference) if ok else None
+
+
+def structure_problems(reference: pd.DataFrame, output) -> list[str]:
+    try:
+        return structure_differences(reference, pd.read_csv(output))
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as exc:
+        return [f"the output file cannot be read as CSV ({exc})"]
 
 
 def system_prompt(profile: dict) -> str:
@@ -88,37 +139,54 @@ def convert(script: ParsedScript, profile: dict) -> dict:
     inputs = test_inputs(script.name)
     system = system_prompt(profile)
     user = f"Convert this {profile['name']} script ({script.path.name}):\n\n```\n{script.source}\n```"
+    python = [sys.executable, *PYTHON_FLAGS] if WARNINGS_AS_ERRORS else [sys.executable]
+    reference = reference_output(script, inputs) if STRUCTURAL_FEEDBACK else None
 
-    log, error, code, ok, stop_reason = [], "", "", False, "max_attempts"
+    log, code, runnable_code = [], "", None
+    kind, problem, signature = "", "", ""  # last problem: "crash" (error) or "structure" (differences)
+    ok, stop_reason = False, "max_attempts"
     start = time.perf_counter()
     for attempt in range(1, MAX_REPAIR_ATTEMPTS + 1):
         if attempt > 1:
-            user = REPAIR_PROMPT.format(source=profile["name"], source_code=script.source,
-                                        python_code=code, error=error)
+            template = REPAIR_PROMPT if kind == "crash" else STRUCTURE_PROMPT
+            user = template.format(source=profile["name"], source_code=script.source,
+                                   python_code=code, error=problem)
         try:
             code = extract_code(chat(system, user))
         except LLMError as exc:
-            error = str(exc)
-            log.append(f"=== attempt {attempt}: LLM error ===\n{error}\n")
+            log.append(f"=== attempt {attempt}: LLM error ===\n{exc}\n")
             continue
         target.write_text(code, encoding="utf-8")
-        previous_error = last_line(error)
-        ok, error = run_script([sys.executable], target, inputs, output)
-        log.append(f"=== attempt {attempt}: {'OK' if ok else 'CRASH'} ===\n{code}\n"
-                   + (f"--- error ---\n{error}\n" if error else ""))
-        if ok:
-            stop_reason = "success"
-            break
-        if last_line(error) == previous_error:
+        ran, error = run_script(python, target, inputs, output)
+        if ran:
+            runnable_code = code
+            diffs = structure_problems(reference, output) if reference is not None else []
+            if not diffs:
+                ok, stop_reason = True, "success"
+                log.append(f"=== attempt {attempt}: OK ===\n{code}\n")
+                break
+            kind, problem = "structure", "\n".join(f"- {d}" for d in diffs)
+            log.append(f"=== attempt {attempt}: STRUCTURE MISMATCH ===\n{code}\n"
+                       f"--- differences ---\n{problem}\n")
+        else:
+            kind, problem = "crash", error
+            log.append(f"=== attempt {attempt}: CRASH ===\n{code}\n--- error ---\n{error}\n")
+
+        # Same problem twice in a row: the model is stuck, stop spending attempts
+        previous, signature = signature, problem if kind == "structure" else last_line(problem)
+        if signature == previous:
             stop_reason = "stuck_same_error"
             break
 
+    if not ok and runnable_code:
+        target.write_text(runnable_code, encoding="utf-8")  # keep the last version that runs
+    status = "success" if ok else "runnable" if runnable_code else "failed"
     (RUNS_DIR / f"{script.name}_conversion.log").write_text("\n".join(log), encoding="utf-8")
     return {
-        "conversion_status": "success" if ok else "failed",
+        "conversion_status": status,
         "conversion_attempts": attempt,
         "repaired": ok and attempt > 1,
         "stop_reason": stop_reason,
-        "last_error": "" if ok else last_line(error),
+        "last_error": "" if ok else signature,
         "conversion_seconds": round(time.perf_counter() - start, 1),
     }

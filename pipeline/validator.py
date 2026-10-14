@@ -53,6 +53,22 @@ def compare_frames(r: pd.DataFrame, py: pd.DataFrame) -> tuple[int, float, list[
     return mismatches, max_diff, details
 
 
+def structure_differences(r: pd.DataFrame, py: pd.DataFrame) -> list[str]:
+    """Differences in output structure only: row count, columns, missing values
+    per column. No data values, so this can be shown to the LLM safely."""
+    diffs = []
+    if len(r) != len(py):
+        diffs.append(f"the output has {len(py)} rows, the original output has {len(r)} rows")
+    if list(r.columns) != list(py.columns):
+        diffs.append(f"the output columns are {list(py.columns)}, "
+                     f"the original output columns are {list(r.columns)} (same names, same order)")
+    for col in [c for c in r.columns if c in py.columns]:
+        r_na, py_na = int(r[col].isna().sum()), int(py[col].isna().sum())
+        if r_na != py_na:
+            diffs.append(f"column '{col}' has {py_na} missing values, the original has {r_na}")
+    return diffs
+
+
 def sort_rows(df: pd.DataFrame) -> pd.DataFrame:
     """Canonical row order (values rounded so that tiny float noise does not reorder)."""
     key = df.round(6).astype(str)
@@ -61,7 +77,7 @@ def sort_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 def validate(script: ParsedScript, conversion: dict) -> dict:
     result = {"script": script.name, "conversion_status": conversion["conversion_status"]}
-    if conversion["conversion_status"] != "success":
+    if conversion["conversion_status"] not in ("success", "runnable"):
         return {**result, "verdict": "not_converted", "details": conversion["last_error"]}
 
     inputs = test_inputs(script.name)

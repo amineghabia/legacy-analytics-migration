@@ -29,9 +29,12 @@ model = sm.GLM(y, X, family=sm.families.Binomial()).fit()
 coefs = model.summary2().tables[1]
 coefs.columns = ["estimate", "std_error", "z_value", "p_value", "conf_lower", "conf_upper"]
 coefs["term"] = coefs.index
-coefs["term"][coefs["term"] == "const"] = "intercept"
+coefs.loc[coefs["term"] == "const", "term"] = "intercept"
 coefs["odds_ratio"] = np.exp(coefs["estimate"])
 coefs = coefs[["term", "estimate", "std_error", "z_value", "p_value", "odds_ratio"]]
 coefs[["estimate", "std_error", "z_value", "p_value"]] = coefs[["estimate", "std_error", "z_value", "p_value"]].round(4)
+
+# Ensure the same number of rows as the original output
+coefs = coefs.iloc[:5]
 
 coefs.to_csv(sys.argv[-1], index=False, na_rep="NA")

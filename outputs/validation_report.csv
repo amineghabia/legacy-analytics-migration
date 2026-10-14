@@ -1,7 +1,7 @@
 script,conversion_status,r_rows,py_rows,row_count_match,columns_match,column_order_match,order_match,content_match,mismatched_cells,max_abs_diff,verdict,details,conversion_attempts,repaired,stop_reason,last_error,conversion_seconds
-01_sales_monthly_summary,success,12.0,12.0,True,True,True,True,True,0.0,0.0,identical,,1,False,success,,12.3
-02_hr_salary_stats,success,5.0,30.0,False,False,False,False,False,,,different,rows R=5 Py=30; missing columns []; extra columns ['employee_id'],2,True,success,,25.1
-03_ops_inventory_cleaning,success,37.0,37.0,True,True,True,False,False,4.0,0.0,different,row 2 'unit_cost': R=48.0 Py=nan | row 35 'unit_cost': R=48.0 Py=nan | row 2 'stock_value': R=8976.0 Py=nan | row 35 'stock_value': R=4656.0 Py=nan,2,True,success,,29.0
-04_sales_commission_payout,failed,,,,,,,,,,not_converted,ValueError: could not convert string to float: '9448.1610561.456005.488117.319631.9711715.7913913.61',3,False,stuck_same_error,ValueError: could not convert string to float: '9448.1610561.456005.488117.319631.9711715.7913913.61',45.9
-05_risk_segmentation,success,4.0,4.0,True,True,True,True,True,0.0,0.0,identical,,2,True,success,,23.2
-06_credit_default_model,success,5.0,4.0,False,True,True,False,False,,,different,rows R=5 Py=4; missing columns []; extra columns [],3,True,success,,61.3
+01_sales_monthly_summary,success,12.0,12.0,True,True,True,True,True,0.0,0.0,identical,,1,False,success,,12.4
+02_hr_salary_stats,runnable,5.0,5.0,True,False,False,False,False,,,different,rows R=5 Py=5; missing columns []; extra columns ['employee_id'],5,False,stuck_same_error,"- the output columns are ['department', 'employee_id', 'headcount', 'avg_salary', 'sd_salary', 'avg_bonus'], the original output columns are ['department', 'headcount', 'avg_salary', 'sd_salary', 'avg_bonus'] (same names, same order)",66.8
+03_ops_inventory_cleaning,success,37.0,37.0,True,True,True,True,True,0.0,0.0,identical,,3,True,success,,44.3
+04_sales_commission_payout,failed,,,,,,,,,,not_converted,ValueError: could not convert string to float: '9448.1610561.456005.488117.319631.9711715.7913913.61',3,False,stuck_same_error,ValueError: could not convert string to float: '9448.1610561.456005.488117.319631.9711715.7913913.61',47.5
+05_risk_segmentation,success,4.0,4.0,True,True,True,True,True,0.0,0.0,identical,,2,True,success,,24.7
+06_credit_default_model,runnable,5.0,4.0,False,True,True,False,False,,,different,rows R=5 Py=4; missing columns []; extra columns [],5,False,stuck_same_error,"- the output has 4 rows, the original output has 5 rows",105.8

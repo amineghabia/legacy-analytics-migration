@@ -56,7 +56,7 @@ Traceback (most recent call last):
     raise TypeError(f"Cannot perform reduction '{name}' with string dtype")
 TypeError: Cannot perform reduction 'median' with string dtype
 
-=== attempt 2: OK ===
+=== attempt 2: CRASH ===
 import pandas as pd
 import sys
 
@@ -80,6 +80,53 @@ inventory = inventory[~inventory['quantity'].isna() & (inventory['quantity'] >= 
 # Missing unit cost: impute with the median cost
 median_cost = inventory['unit_cost'].median(skipna=True)
 inventory['unit_cost'].fillna(median_cost, inplace=True)
+
+inventory['stock_value'] = round(inventory['quantity'] * inventory['unit_cost'], 2)
+
+# Stock age relative to the fixed quarter-end reporting date
+inventory['last_count_date'] = pd.to_datetime(inventory['last_count_date'])
+inventory['days_since_count'] = (pd.to_datetime("2024-06-30") - inventory['last_count_date']).dt.days
+
+inventory = inventory.sort_values(by=['warehouse', 'sku'])
+inventory.to_csv(output_file, index=False, na_rep="NA")
+
+--- error ---
+Traceback (most recent call last):
+  File "C:\Etudes\Deloitte\converted\03_ops_inventory_cleaning.py", line 23, in <module>
+    inventory['unit_cost'].fillna(median_cost, inplace=True)
+  File "C:\Users\amine\AppData\Local\Programs\Python\Python311\Lib\site-packages\pandas\core\generic.py", line 7037, in fillna
+    warnings.warn(
+pandas.errors.ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+
+=== attempt 3: OK ===
+import pandas as pd
+import sys
+
+# Read input files
+input_files = sys.argv[1:-1]
+output_file = sys.argv[-1]
+
+inventory = pd.read_csv(input_files[0])
+
+# Normalise text fields
+inventory['warehouse'] = inventory['warehouse'].str.upper().str.strip()
+inventory['item_name'] = inventory['item_name'].str.strip()
+
+# Remove exact duplicate lines (same count sent twice)
+inventory = inventory.drop_duplicates()
+
+# Quantities: non-numeric values become NA, then invalid rows are dropped
+inventory['quantity'] = pd.to_numeric(inventory['quantity'], errors='coerce')
+inventory = inventory[~inventory['quantity'].isna() & (inventory['quantity'] >= 0)]
+
+# Missing unit cost: impute with the median cost
+median_cost = inventory['unit_cost'].median(skipna=True)
+inventory.loc[inventory['unit_cost'].isna(), 'unit_cost'] = median_cost
 
 inventory['stock_value'] = round(inventory['quantity'] * inventory['unit_cost'], 2)
 

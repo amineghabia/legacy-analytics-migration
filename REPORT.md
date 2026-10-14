@@ -1,8 +1,9 @@
 # Report: Challenges, Results and Lessons Learned
 
 This report covers what was built, what the results are, the challenges met
-during development and how each was addressed. All figures come from the run
-committed in `outputs/` unless stated otherwise.
+during development and how each was addressed. Sections 1 to 5 describe V1
+(git tag `v1`). Section 6 describes V2, an iteration on the repair loop, and its
+measured effect. The run committed in `outputs/` is the V2 run.
 
 ---
 
@@ -23,6 +24,9 @@ committed in `outputs/` unless stated otherwise.
 - **No incorrect conversion is reported as valid.** The pipeline is a reliable
   triage tool: it accelerates the safe cases and directs human effort to the
   risky ones.
+- **V2** (runtime warnings treated as errors + structural feedback from the
+  validator to the converter) raises identical conversions **from 2 to 3 out of 6**,
+  and fixes all values of a fourth script (see section 6).
 
 ---
 
@@ -310,8 +314,8 @@ Ranked by expected impact relative to effort:
 | # | Improvement | Expected effect |
 |---|-------------|-----------------|
 | 1 | Larger code model (e.g. 32B class) on an internal GPU server | Better instruction following, fewer omissions. Largest single lever. |
-| 2 | Structural feedback from the validator to the converter: row count, column names, NA counts per column, without values | Likely fixes 02, 03 and 06, with no risk of the model copying expected numbers |
-| 3 | Treat runtime warnings as errors when running converted code | Script 03 would crash on `ChainedAssignmentError` and enter the repair loop |
+| 2 | ~~Structural feedback from the validator to the converter~~ | Done in V2 (section 6) |
+| 3 | ~~Treat runtime warnings as errors when running converted code~~ | Done in V2 (section 6) |
 | 4 | State target library versions in the prompt (pandas 3, Copy-on-Write) | Fewer version-drift errors |
 | 5 | Several test datasets per script, including edge cases | Catches code that is correct only by coincidence (05) |
 | 6 | Few-shot examples of validated conversions in the prompt (migration playbook) | Fewer recurring errors |
@@ -320,7 +324,7 @@ Ranked by expected impact relative to effort:
 
 ### Scaling to a real estate (e.g. 2,000 scripts)
 
-- **Throughput**: about 40 s per script on this laptop, roughly 22 hours
+- **Throughput**: about 40 to 60 s per script on this laptop, roughly 22 to 33 hours
   sequentially. On a GPU server with parallel requests, a few hours.
 - **Triage output**: scripts `identical` → fast-track review. `different` →
   developer fix, starting from the cell-level details. `not_converted` → manual
@@ -328,3 +332,83 @@ Ranked by expected impact relative to effort:
 - **Prioritisation**: complexity and business domain from step 2-3 can order the
   migration waves (simple, low-risk scripts first; regulated models such as PD
   models with full review).
+
+---
+
+## 6. V2: a measured iteration on the repair loop
+
+### 6.1 What changed
+
+Two settings in `config.py` (both `False` reproduces V1):
+
+1. **`WARNINGS_AS_ERRORS`**: during the repair loop, converted code runs with
+   `python -W error -W ignore::DeprecationWarning`. A runtime warning becomes a
+   crash and enters the repair loop. Target: silent pandas 3 Copy-on-Write issues,
+   which only emit a `ChainedAssignmentError` warning. Library deprecation notices
+   are ignored to avoid false crashes. Checked beforehand: the V1 conversions that
+   were correct (01, 05) do not crash under this setting.
+2. **`STRUCTURAL_FEEDBACK`**: the original script is run once to get the reference
+   output. When the converted code runs, the structure of its output is compared:
+   row count, column names and order, and number of missing values per column.
+   Differences are sent back to the model with the original script and its code,
+   for example:
+   ```
+   - the output has 30 rows, the original output has 5 rows
+   - column 'avg_bonus' has 0 missing values, the original has 2
+   ```
+   **Values are never sent.** This is a deliberate compromise. Structure guides the
+   model towards the right logic, but it cannot copy or hard-code the expected
+   numbers. Value-level differences remain the validator's job.
+
+Supporting changes:
+- Early stopping now compares the full structural feedback (or the exception
+  line for crashes). Pandas warnings end with a documentation link, so the
+  exception line is located explicitly instead of taking the last line of the
+  traceback.
+- If the budget runs out on a structural mismatch, the last runnable version is
+  kept (status `runnable`) so the validator can still report on it.
+
+### 6.2 Results
+
+| Script | V1 validation | V2 validation | V2 attempts | What happened in V2 |
+|--------|---------------|---------------|-------------|---------------------|
+| 01 | identical | identical | 1 | unchanged |
+| 02 | different: 30 rows, wrong NA | different: one extra column, **all values correct** | 5 | feedback fixed the row count (attempt 3), then the missing values (attempt 4: `mean(skipna=False)`, i.e. the planned R `mean()` NA trap). Stuck on the extra `employee_id` column. |
+| 03 | different | **identical** | 3 | `fillna(inplace=True)` raised `ChainedAssignmentError` and was repaired |
+| 04 | not converted | not converted | 3 | unchanged: `dtype=str` |
+| 05 | identical | identical | 2 | unchanged |
+| 06 | different | different | 5 | `ChainedAssignmentError` caught and repaired, then stuck on "4 rows instead of 5": the model does not find the dropped predictor |
+
+| Metric | V1 | V2 |
+|--------|----|----|
+| Identical conversions | 2/6 | **3/6** |
+| Scripts with all values correct | 2/6 | 4/6 (02 differs only by one extra column) |
+| Incorrect conversions reported as valid | 0 | 0 |
+| Full pipeline run time | ~4 min | ~6 min |
+
+### 6.3 Analysis
+
+- **Warnings as errors** is cheap and effective: it turned a silent error (03) into
+  a crash the loop could repair. It also exposed a second Copy-on-Write issue in
+  06 that V1 had not surfaced.
+- **Structural feedback** works when the difference points to the faulty step: a
+  wrong row count leads to the aggregation, a wrong NA count leads to `skipna`. It
+  fixed the planned `mean()` NA trap without the model ever seeing a value.
+- **Its limit** shows when the feedback does not localise the error. "4 rows
+  instead of 5" in a coefficient table does not tell the 7B model which predictor
+  is missing. The extra `employee_id` column in 02 shows that the model can also
+  ignore an explicit, precise instruction (the same pattern as `dtype=str` in 04).
+- **Cost**: about 50% more run time, because more attempts are used. On a real
+  estate this is a trade-off between compute and human review time.
+- **Caveat**: V1 and V2 are compared on one run each, on six scripts. Run-to-run
+  variability (section 3.5) means a difference of one script should be read as an
+  indication, not a statistically robust result.
+
+### 6.4 What the remaining failures say
+
+The three remaining problems (02 extra column, 04 `dtype=str`, 06 dropped
+predictor) all come from the model **not following an explicit instruction or a
+precise feedback**. Prompting alone has reached its limit with a 7B model. The next
+lever is the model itself (next step #1), followed by finer feedback, for example
+the names of the coefficients/rows present on each side, which are identifiers
+rather than values.

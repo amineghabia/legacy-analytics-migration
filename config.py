@@ -30,6 +30,10 @@ MAX_JSON_ATTEMPTS = 2    # extraction: retry once if the answer fails validation
 
 MAX_REPAIR_ATTEMPTS = 5  # conversion: generate, run, re-prompt with the error (early stop if stuck)
 USE_CONVERSION_NOTES = True  # inject known A->B pitfalls into the conversion prompt
+# V2 improvements (set both to False to reproduce V1)
+WARNINGS_AS_ERRORS = True    # repair loop: a runtime warning (e.g. pandas Copy-on-Write) is a crash
+STRUCTURAL_FEEDBACK = True   # repair loop: compare output structure (rows, columns, NA counts) with
+                             # the original and send the differences back, never the values
 SCRIPT_TIMEOUT_S = 120
 
 # --- Taxonomies (closed lists, required to compare rules vs LLM) -------------

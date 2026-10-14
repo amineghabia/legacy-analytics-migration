@@ -20,7 +20,7 @@ inventory = inventory[~inventory['quantity'].isna() & (inventory['quantity'] >= 
 
 # Missing unit cost: impute with the median cost
 median_cost = inventory['unit_cost'].median(skipna=True)
-inventory['unit_cost'].fillna(median_cost, inplace=True)
+inventory.loc[inventory['unit_cost'].isna(), 'unit_cost'] = median_cost
 
 inventory['stock_value'] = round(inventory['quantity'] * inventory['unit_cost'], 2)
 

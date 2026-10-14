@@ -15,7 +15,7 @@ for file in input_files:
     headcount = employees.groupby('department')['employee_id'].transform('count')
     avg_salary = employees.groupby('department')['salary'].transform('mean')
     sd_salary = employees.groupby('department')['salary'].transform('std', ddof=1)
-    avg_bonus = employees.groupby('department')['bonus'].transform('mean')
+    avg_bonus = employees.groupby('department')['bonus'].transform('mean', skipna=False)
     
     result = employees[['department', 'employee_id']].drop_duplicates().reset_index(drop=True)
     result['headcount'] = headcount
@@ -27,6 +27,9 @@ for file in input_files:
 
 # Concatenate all results
 final_result = pd.concat(results, ignore_index=True)
+
+# Remove duplicate rows based on department
+final_result = final_result.drop_duplicates(subset='department', keep='first').reset_index(drop=True)
 
 # Write the result to the output file
 final_result.to_csv(output_file, index=False, na_rep="NA")

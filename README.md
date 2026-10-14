@@ -21,7 +21,7 @@ workstation, so no source code is sent to an external service.
 | 2. LLM extraction | `pipeline/llm_extractor.py` | Business category, technical category, complexity and a short description, returned as schema-constrained JSON and validated. |
 | 3. Rule-based extraction | `pipeline/rule_extractor.py` | The same fields from deterministic rules (keywords, function mapping, structural complexity score), with no LLM involved. |
 | 4. Comparison | `pipeline/comparator.py` | Per-field agreement between rules and LLM. Disagreements are flagged for human review. |
-| 5. Conversion | `pipeline/converter.py` | LLM translation from A to B, with a repair loop: run, capture the error, re-prompt. |
+| 5. Conversion | `pipeline/converter.py` | LLM translation from A to B, with a repair loop: run, capture the error or the structural differences, re-prompt. |
 | 6. Validation | `pipeline/validator.py` | Runs the original and the converted script on the same input and compares rows, columns and values (numeric tolerance). |
 
 ```
@@ -113,7 +113,7 @@ python test_data/generate_test_data.py   # optional: test data is already commit
 python run_pipeline.py                   # or: python run_pipeline.py --input <directory>
 ```
 
-A full run on the 6 sample scripts takes about 4 minutes on a laptop
+A full run on the 6 sample scripts takes about 6 minutes on a laptop
 (RTX 4050, 6 GB VRAM).
 
 ### Main settings (`config.py`)
@@ -124,6 +124,10 @@ A full run on the 6 sample scripts takes about 4 minutes on a laptop
 | `TEMPERATURE`, `SEED` | `0`, `42` | deterministic decoding |
 | `MAX_REPAIR_ATTEMPTS` | `5` | conversion budget (stops early if the same error repeats) |
 | `USE_CONVERSION_NOTES` | `True` | injects the known R → Python pitfalls into the conversion prompt |
+| `WARNINGS_AS_ERRORS` | `True` | V2: a runtime warning during the repair loop counts as a crash |
+| `STRUCTURAL_FEEDBACK` | `True` | V2: output structure (rows, columns, missing values per column) is compared with the original and differences are sent back to the model, never the values |
+
+Set both V2 settings to `False` to reproduce V1 (also available as git tag `v1`).
 | `NUMERIC_RTOL`, `NUMERIC_ATOL` | `1e-6`, `1e-8` | tolerance for numeric comparison |
 
 ## 5. Outputs
@@ -171,19 +175,19 @@ The six scripts cover every category and include deliberate migration traps.
 Three high-priority disagreements are flagged for review. The main one is script 06,
 finance vs risk, a genuinely ambiguous case.
 
-**Conversion and validation**
+**Conversion and validation (V2, with V1 for comparison)**
 
-| Script | Conversion | Attempts | Validation |
-|--------|-----------|----------|------------|
-| 01 | success | 1 | identical |
-| 02 | success | 2 | different (30 rows instead of 5) |
-| 03 | success | 2 | different (missing costs not imputed) |
-| 04 | failed (stuck on the same error) | 3 | not converted |
-| 05 | success | 2 | identical |
-| 06 | success | 3 | different (one predictor dropped from the model) |
+| Script | Conversion (V2) | Attempts | Validation V1 | Validation V2 |
+|--------|-----------------|----------|---------------|---------------|
+| 01 | success | 1 | identical | identical |
+| 02 | runnable (structure still differs) | 5 | different (30 rows instead of 5) | different (one extra column; all values correct) |
+| 03 | success | 3 | different (missing costs not imputed) | **identical** |
+| 04 | failed (stuck on the same error) | 3 | not converted | not converted |
+| 05 | success | 2 | identical | identical |
+| 06 | runnable (structure still differs) | 5 | different (one predictor dropped) | different (one predictor dropped) |
 
-Three conversions run without any error but produce wrong results. Only the output
-comparison reveals it. No incorrect conversion was reported as valid.
+V1 gave 2 identical conversions out of 6, V2 gives 3. In both versions, every wrong
+conversion is detected: no incorrect conversion was reported as valid.
 See `REPORT.md` for the analysis.
 
 ## 8. Limitations
@@ -193,8 +197,9 @@ See `REPORT.md` for the analysis.
 - **Validation is only as good as the test data**: it proves equivalence on the
   given inputs, not in general. Script 05 is identical on the test data, but its
   code relies on an ordering that holds only by coincidence.
-- **The repair loop only fixes crashes**: code that runs but is wrong is reported by
-  the validator, not repaired automatically.
+- **The repair loop does not see values**: it fixes crashes and, in V2, structural
+  differences. Code with the right structure but wrong values is reported by the
+  validator, not repaired automatically.
 - **Lexical parser**: regex-based, with no syntax tree. Dynamic calls (`do.call`,
   `eval`) and multi-line constructs are not fully understood.
 - **Rule calibration**: keyword lists and complexity thresholds were set on the six
