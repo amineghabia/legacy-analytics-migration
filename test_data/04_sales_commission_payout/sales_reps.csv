@@ -1,0 +1,9 @@
+rep_id,rep_name,team,commission_rate
+R01,Alice Martin,East,0.05
+R02,Bilal Haddad,East,0.04
+R03,Chloe Tremblay,West,0.05
+R04,David Nguyen,West,0.06
+R05,Emma Roy,East,0.04
+R06,Farid Benali,West,0.05
+R07,Grace Lee,East,0.06
+R08,Hugo Gagnon,West,0.05

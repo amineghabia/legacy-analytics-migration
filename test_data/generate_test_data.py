@@ -90,7 +90,36 @@ def ops_inventory_cleaning() -> None:
     save(df, "03_ops_inventory_cleaning", "inventory.csv")
 
 
+def sales_commission_payout() -> None:
+    """Two inputs (reps + transactions) joined on rep_id.
+
+    Trap: the script ranks reps with 1:nrow() and pays an accelerator to
+    rows [1:3]. A literal port with 0-based indexing shifts ranks and pays
+    the wrong reps. Rep R08 has no transaction (tests the join type).
+    """
+    rng = np.random.default_rng(4)
+    reps = pd.DataFrame({
+        "rep_id": [f"R{i:02d}" for i in range(1, 9)],
+        "rep_name": ["Alice Martin", "Bilal Haddad", "Chloe Tremblay", "David Nguyen",
+                     "Emma Roy", "Farid Benali", "Grace Lee", "Hugo Gagnon"],
+        "team": ["East", "East", "West", "West", "East", "West", "East", "West"],
+        "commission_rate": [0.05, 0.04, 0.05, 0.06, 0.04, 0.05, 0.06, 0.05],
+    })
+    n = 80
+    txns = pd.DataFrame({
+        "txn_id": [f"T{5000 + i}" for i in range(n)],
+        "rep_id": rng.choice(reps.rep_id[:7], n),   # R08 never appears
+        "txn_date": (pd.to_datetime("2024-01-01")
+                     + pd.to_timedelta(rng.integers(0, 91, n), unit="D")).strftime("%Y-%m-%d"),
+        "amount": rng.uniform(500, 15000, n).round(2),
+        "status": rng.choice(["closed", "closed", "closed", "pending", "cancelled"], n),
+    })
+    save(reps, "04_sales_commission_payout", "sales_reps.csv")
+    save(txns, "04_sales_commission_payout", "transactions.csv")
+
+
 if __name__ == "__main__":
     sales_monthly_summary()
     hr_salary_stats()
     ops_inventory_cleaning()
+    sales_commission_payout()
